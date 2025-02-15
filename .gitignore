@@ -45,3 +45,11 @@ next-env.d.ts
 
 */.next
 */.env*
+
+*/__pycache__
+*/__pycache__/*
+*/*__pycache__
+
+*/utils/__pycache__/*
+*/agents/__pycache__/*
+*/agents/models/__pycache__/*

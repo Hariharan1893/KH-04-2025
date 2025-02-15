@@ -241,7 +241,7 @@ export default function JobCreationWizard() {
       setShowConfetti(true);
       console.log(data)
       setTimeout(() => setShowConfetti(false), 3000);
-      window.location.href = "/hr/jobs";
+      // window.location.href = "/hr/jobs";
     }
 
   };

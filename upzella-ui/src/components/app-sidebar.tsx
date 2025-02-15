@@ -33,11 +33,11 @@ const items = [
   //   url: "#",
   //   icon: Search,
   // },
-  {
-    title: "Logout",
-    url: "#",
-    icon: LogOut,
-  },
+  // {
+  //   title: "Logout",
+  //   url: "#",
+  //   icon: LogOut,
+  // },
 ]
 
 export function AppSidebar() {
