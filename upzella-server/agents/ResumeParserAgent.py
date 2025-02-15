@@ -1,7 +1,6 @@
 from agents.models.mistral import client as mc
 from agents.models.gemini import client as gc
 
-import json
 
 # def parser_agent(extracted_resume_text):
 #     chat_response = mc.agents.complete(

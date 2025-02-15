@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase';
 import { Copy, Edit, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import React, { useEffect, useState } from 'react'
 
 function page() {
@@ -102,6 +103,7 @@ function page() {
                                 <div className='flex justify-between items-center w-full'>
                                     <p className="text-md font-bold">{job.job_name}</p>
                                     <div className='flex gap-2 text-white fill-white'>
+                                        <Link href={`/hr/view-candidates/${job.job_id}`} className='text-blue-500 underline'>View Candidates</Link>
                                         <Button
                                             className='bg-blue-500'
                                             variant="ghost" onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}>

@@ -1,5 +1,6 @@
 import io
 import PyPDF2
+import re
 
 
 def parse_pdf(pdf_file):
@@ -25,3 +26,11 @@ def parse_pdf(pdf_file):
         # pass
 
     return page_text
+
+
+def format_response(data):
+    cleaned_json_string = re.sub(
+        r'^```json\s*', '', data, flags=re.MULTILINE)
+    cleaned_json_string = re.sub(
+        r'\s*```$', '', cleaned_json_string, flags=re.MULTILINE)
+    return cleaned_json_string
