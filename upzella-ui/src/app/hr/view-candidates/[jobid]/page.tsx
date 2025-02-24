@@ -18,7 +18,7 @@ export default function ViewCandidates() {
   const [loading, setLoading] = useState(true);
   const [jobData, setJobData] = useState<any>(null);
 
-  const [interviewData, setInterviewData] = useState<{ [key: string]: any }>({});
+  const [interviewData, setInterviewData] = useState<any>(null);
 
 
   interface ScoredData {
@@ -164,27 +164,48 @@ export default function ViewCandidates() {
                   const experienceReason = scoredData.Experience_reason || 'No explanation provided.';
                   const technicalReason = scoredData['Technical Skills_reason'] || 'No explanation provided.';
 
-                  const getInterviewStatus = (interviewData: any) => {
-                    console.log("interviewData", interviewData);
-                    if (!interviewData) return "Pending";
-                    else {
-                      return "Done"
+
+                  const getActionStatus = () => {
+                    if (
+                      jobData?.resume_filt_threshold &&
+                      totalScore >= parseInt(jobData.resume_filt_threshold.toString().replace('%', ''))
+                    ) {
+                      return <Button>Start Interview</Button>;
                     }
 
+                    return <span>Not fit</span>;
                   };
 
-                  const fetchInterviewData = async () => {
-                    const { data, error } = await supabase
-                      .from('InterviewDetails')
-                      .select('*')
-                      .eq('candidate_id', candidate?.candidate_id).order('created_at', { ascending: false }) // Sort by latest first
-                      .limit(1)
-                      .single();
-                    if (error) {
-                      console.error('Error fetching candidates:', error);
-                    } else {
-                      setInterviewData(data);
+                  const getInterviewStatus = (interviewData: any) => {
+
+                    const actionStatus: any = getActionStatus();
+                    const isNotFit = React.isValidElement(actionStatus) && (actionStatus?.props.children as any) === "Not fit";
+
+                    if (isNotFit) {
+                      return "Not fit";
                     }
+                    if (!interviewData) return "Pending";
+
+                    return "Done";
+                  };
+
+
+
+                  const fetchInterviewData = async () => {
+                    try {
+                      const { data, error } = await supabase
+                        .from('InterviewDetails')
+                        .select('*')
+                        .eq('candidate_id', candidate?.candidate_id).order('created_at', { ascending: false }) // Sort by latest first
+                        .limit(1)
+                        .maybeSingle();
+                      if (error) {
+                        console.error('Error fetching candidates:', error);
+                        setInterviewData(null)
+                      } else {
+                        setInterviewData(data);
+                      }
+                    } catch (e) { }
                   };
 
                   fetchInterviewData();
@@ -247,11 +268,7 @@ export default function ViewCandidates() {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        {jobData?.resume_filt_threshold && totalScore >= parseInt(jobData.resume_filt_threshold.toString().replace('%', '')) ? (
-                          <Button>Start Interview</Button>
-                        ) : (
-                          <span>Not fit</span>
-                        )}
+                        {getActionStatus()}
                       </TableCell>
                       <TableCell>
                         {getInterviewStatus(interviewData)}
