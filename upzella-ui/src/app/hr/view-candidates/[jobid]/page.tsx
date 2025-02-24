@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'react-hot-toast';
 
 export default function ViewCandidates() {
   const { jobid }: any = useParams();
   const jobId = jobid;
-  const router = useRouter();
 
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,6 @@ export default function ViewCandidates() {
         if (error) {
           console.error('Error fetching candidates:', error);
         } else {
-          console.log("Candidates:", data);
           setCandidates(data);
         }
         setLoading(false);
@@ -41,13 +42,12 @@ export default function ViewCandidates() {
       const fetchJobData = async () => {
         const { data, error } = await supabase
           .from('Jobs')
-          .select('resume_filt_threshold, job_name, parsing_weigthage')
+          .select('resume_filt_threshold, job_name, parsing_weigthage, job_id')
           .eq('job_id', jobId)
           .maybeSingle();
         if (error) {
           console.error('Error fetching job details:', error);
         } else {
-          console.log("Job Data:", data);
           setJobData(data);
         }
       };
@@ -57,113 +57,138 @@ export default function ViewCandidates() {
     }
   }, [jobId]);
 
-  const startInterview = (candidate: any) => {
-    alert(`Starting interview for ${candidate.name} (Candidate ID: ${candidate.candidate_id}).`);
+  const handleSendMail = async () => {
+    if (!jobData || !jobData.resume_filt_threshold) return;
+
+    const threshold = parseInt(jobData.resume_filt_threshold.toString().replace('%', ''));
+
+    const qualifiedCandidates = candidates.filter((candidate) => {
+      const resumeData = candidate.resume_data;
+      let scoredData: any = {};
+      try {
+        scoredData = resumeData && resumeData.scoredData ? resumeData.scoredData : {};
+      } catch (error) {
+        console.error('Error parsing scoredData', error);
+      }
+      const totalScore = scoredData?.total_score || 0;
+      return totalScore >= threshold;
+    });
+
+    if (qualifiedCandidates.length === 0) {
+      toast.error('No qualified candidates to send emails to.');
+      return;
+    }
+
+    const candidateDetails = qualifiedCandidates.map((c) => ({
+      candidate_id: c.candidate_id,
+      candidate_email: c.email,
+      candidate_name: c.name,
+    }));
+
+    try {
+      await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateDetails,
+          provider: 'gmail',
+          subject: `Interview Invitation for ${jobData.job_name}`,
+          message: `Dear candidate,\n\nYou have been shortlisted for an interview for the position of ${jobData.job_name}. `,
+          jobId: jobId,
+        }),
+      });
+      toast.success('Emails sent successfully!');
+    } catch (error) {
+      console.error('Error sending emails:', error);
+      toast.error('Failed to send emails.');
+    }
   };
-
-
 
   if (loading) {
     return <p>Loading candidates...</p>;
   }
 
-  // Extract dynamic categories from jobData.parsing_weigthage (an array of objects)
-  const categories = jobData?.parsing_weigthage
-    ? jobData.parsing_weigthage.map((item: any) => item.description)
-    : [];
-
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">
-        Candidates for Job: {jobData?.job_name || jobId}
-      </h1>
-      <p className='mb-5'>Resume Threshold: {jobData?.resume_filt_threshold}</p>
-      {candidates.length === 0 ? (
-        <p>No candidate applications found for this job.</p>
-      ) : (
-        <table className="min-w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2">Name</th>
-              {jobData?.parsing_weigthage &&
-                jobData.parsing_weigthage.map((item: any) => (
-                  <th key={item.description} className="border p-2">
-                    {item.description} ({item.weightage})
-                  </th>
-                ))
-              }
-              <th className="border p-2">Total Score</th>
-              <th className="border p-2">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {candidates.map((candidate) => {
-              const resumeData = candidate.resume_data;
-              console.log("Candidate resume_data:", resumeData);
+    <TooltipProvider>
+      <Card className="p-4">
+        <CardHeader>
+          <CardTitle>Candidates for Job: {jobData?.job_name || jobId}</CardTitle>
+          <p className="text-muted-foreground">Resume Threshold: {jobData?.resume_filt_threshold}</p>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleSendMail} className="mb-4">Send Mail to All Qualified Candidates</Button>
+          {candidates.length === 0 ? (
+            <p>No candidate applications found for this job.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Resume</TableHead>
+                  <TableHead>Total Score</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {candidates.map((candidate: any) => {
+                  const resumeData = candidate.resume_data;
+                  let scoredData: ScoredData = {};
+                  try {
+                    scoredData = resumeData && resumeData.scoredData ? resumeData.scoredData : {};
+                  } catch (error) {
+                    console.error('Error parsing scoredData', error);
+                  }
 
-              let scoredData: ScoredData = {};
-              try {
-                scoredData = resumeData && resumeData.scoredData
-                  ? resumeData.scoredData
-                  : {};
-                console.log("Scored Data:", scoredData);
-              } catch (error) {
-                console.error("Error parsing scoredData", error);
-              }
+                  const totalScore = scoredData.total_score || 0;
+                  const totalReason = scoredData.total_reason || 'No explanation provided.';
 
-              const totalScore = scoredData.total_score || 0;
-              const totalReason = scoredData.total_reason || "No explanation provided.";
-
-              return (
-                <tr key={candidate.candidate_id}>
-                  <td className="border p-2">
-                    <Link href={`${resumeData.resumeUrl.publicUrl}`} target='_blank' className="text-blue-500 hover:underline">
-                      {candidate.name}
-                    </Link>
-                  </td>
-                  {categories.map((category: any) => {
-                    const scoreKey = `${category}_score`;
-                    const reasonKey = `${category}_reason`;
-                    const categoryScore = scoredData[scoreKey] || 0;
-                    const categoryReason = scoredData[reasonKey] || "No explanation provided.";
-                    return (
-                      <td key={category} className="border p-2">
+                  return (
+                    <TableRow key={candidate.candidate_id}>
+                      <TableCell>
+                        {resumeData?.resumeUrl?.publicUrl ? (
+                          <Link href={resumeData.resumeUrl.publicUrl} target="_blank" className="text-blue-500 hover:underline">
+                            {candidate.name}
+                          </Link>
+                        ) : (
+                          candidate.name
+                        )}
+                      </TableCell>
+                      <TableCell>{candidate.email}</TableCell>
+                      <TableCell>
+                        {resumeData?.resumeUrl?.publicUrl ? (
+                          <Link href={resumeData.resumeUrl.publicUrl} target="_blank" className="text-blue-500 hover:underline">
+                            View Resume
+                          </Link>
+                        ) : (
+                          'Not Available'
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span>{categoryScore}%</span>
+                            <span>{totalScore}%</span>
                           </TooltipTrigger>
-                          <TooltipContent className="w-[200px]">
-                            <p>{categoryReason}</p>
+                          <TooltipContent>
+                            <p>{totalReason}</p>
                           </TooltipContent>
                         </Tooltip>
-                      </td>
-                    );
-                  })}
-                  <td className="border p-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>{totalScore}%</span>
-                      </TooltipTrigger>
-                      <TooltipContent className="w-[200px]">
-                        <p>{totalReason}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </td>
-                  <td className="border p-2 text-center">
-                    {jobData && parseInt(jobData.resume_filt_threshold.toString().replace("%", '')) && parseInt(totalScore.toString().replace("%", '')) >= parseInt(jobData.resume_filt_threshold.toString().replace("%", '')) ? (
-                      <Button onClick={() => startInterview(candidate)}>
-                        Start Interview
-                      </Button>
-                    ) : (
-                      <span>Not fit</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-    </div>
+                      </TableCell>
+                      <TableCell>
+                        {jobData?.resume_filt_threshold && totalScore >= parseInt(jobData.resume_filt_threshold.toString().replace('%', '')) ? (
+                          <Button>Start Interview</Button>
+                        ) : (
+                          <span>Not fit</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }

@@ -255,7 +255,7 @@ export default function JobCreationWizard() {
 
 
   return (
-    <div className='flex justify-center items-center w-full h-full mt-20 '>
+    <div className='flex justify-center items-center w-full h-full mt-10 '>
       {showConfetti && (
         <Confetti width={confettiDimensions.width} height={confettiDimensions.height} />
       )}

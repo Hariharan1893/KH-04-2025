@@ -1,5 +1,4 @@
-from agents.models.mistral import client as mc
-from agents.models.gemini import client as gc
+# from agents.models.mistral import client as mc
 
 
 # def parser_agent(extracted_resume_text):
@@ -14,6 +13,7 @@ from agents.models.gemini import client as gc
 #     )
 #     return chat_response.choices[0].message.content
 
+from agents.models.gemini import client as gc
 
 prompt = r"""
 You are a highly accurate resume parser. Your task is to extract structured information from the given resume text and output the result in a JSON format that strictly follows the schema below. Do not add any extra keys, and do not invent any data that is not present in the resume.
@@ -95,6 +95,10 @@ Now, parse the following resume text:
 def parser_agent(extracted_resume_text):
     response = gc.models.generate_content(
         model="gemini-2.0-flash",
+        config={
+              'temperature': 0,
+            'seed': 145
+        },
         contents=str(prompt + extracted_resume_text)
     )
 

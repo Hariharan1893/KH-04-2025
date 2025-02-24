@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
@@ -31,10 +31,13 @@ export default function RootLayout({
       >
         <SidebarProvider>
           <AppSidebar />
-          <main>
+          <div className="w-full h-full">
             <SidebarTrigger />
+            {/* <nav className="font-bold text-5xl text-center w-full">
+              <h1>Upzella</h1>
+            </nav> */}
             {children}
-          </main>
+          </div>
         </SidebarProvider>
       </body>
     </html>

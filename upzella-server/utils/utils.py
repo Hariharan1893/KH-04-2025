@@ -13,18 +13,6 @@ def parse_pdf(pdf_file):
     for _, page in enumerate(reader.pages, start=1):
         page_text += page.extract_text() or ""
 
-        # try:
-        #     if '/Annots' in page:
-        #         annotations = page['/Annots']
-
-        #         for annot in annotations:
-        #             obj = annot.get_object()
-        #             if '/A' in obj and '/URI' in obj['/A']:
-        #                 url = obj['/A']['/URI']
-        #                 page_text += '\n' + url + '\n'
-        # except:
-        # pass
-
     return page_text
 
 
