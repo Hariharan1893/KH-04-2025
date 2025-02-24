@@ -18,6 +18,9 @@ export default function ViewCandidates() {
   const [loading, setLoading] = useState(true);
   const [jobData, setJobData] = useState<any>(null);
 
+  const [interviewData, setInterviewData] = useState<{ [key: string]: any }>({});
+
+
   interface ScoredData {
     [key: string]: any;
     total_score?: number;
@@ -105,7 +108,13 @@ export default function ViewCandidates() {
   };
 
   if (loading) {
-    return <p>Loading candidates...</p>;
+    return <div className="flex flex-col items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+
+      <p className="mt-4 text-lg text-gray-700 flex">
+        Loading candidates...
+      </p>
+    </div>
   }
 
   return (
@@ -125,9 +134,13 @@ export default function ViewCandidates() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Resume</TableHead>
+                  <TableHead>Education Score</TableHead>
+                  <TableHead>Experience Score</TableHead>
+                  <TableHead>Technical Score</TableHead>
                   <TableHead>Total Score</TableHead>
                   <TableHead>Action</TableHead>
+                  <TableHead>Interview Status</TableHead>
+                  <TableHead>Report</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -143,6 +156,40 @@ export default function ViewCandidates() {
                   const totalScore = scoredData.total_score || 0;
                   const totalReason = scoredData.total_reason || 'No explanation provided.';
 
+                  const educationScore = scoredData.Education_score || 0;
+                  const experienceScore = scoredData.Experience_score || 0;
+                  const technicalScore = scoredData['Technical Skills_score'] || 0;
+
+                  const educationReason = scoredData.Education_reason || 'No explanation provided.';
+                  const experienceReason = scoredData.Experience_reason || 'No explanation provided.';
+                  const technicalReason = scoredData['Technical Skills_reason'] || 'No explanation provided.';
+
+                  const getInterviewStatus = (interviewData: any) => {
+                    console.log("interviewData", interviewData);
+                    if (!interviewData) return "Pending";
+                    else {
+                      return "Done"
+                    }
+
+                  };
+
+                  const fetchInterviewData = async () => {
+                    const { data, error } = await supabase
+                      .from('InterviewDetails')
+                      .select('*')
+                      .eq('candidate_id', candidate?.candidate_id).order('created_at', { ascending: false }) // Sort by latest first
+                      .limit(1)
+                      .single();
+                    if (error) {
+                      console.error('Error fetching candidates:', error);
+                    } else {
+                      setInterviewData(data);
+                    }
+                  };
+
+                  fetchInterviewData();
+
+
                   return (
                     <TableRow key={candidate.candidate_id}>
                       <TableCell>
@@ -155,21 +202,46 @@ export default function ViewCandidates() {
                         )}
                       </TableCell>
                       <TableCell>{candidate.email}</TableCell>
+
                       <TableCell>
-                        {resumeData?.resumeUrl?.publicUrl ? (
-                          <Link href={resumeData.resumeUrl.publicUrl} target="_blank" className="text-blue-500 hover:underline">
-                            View Resume
-                          </Link>
-                        ) : (
-                          'Not Available'
-                        )}
+                        <Tooltip >
+                          <TooltipTrigger asChild>
+                            <span>{educationScore}%</span>
+                          </TooltipTrigger>
+                          <TooltipContent className='max-w-[300px]'>
+                            <p>{educationReason}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
+
                       <TableCell>
-                        <Tooltip>
+                        <Tooltip >
+                          <TooltipTrigger asChild>
+                            <span>{experienceScore}%</span>
+                          </TooltipTrigger>
+                          <TooltipContent className='max-w-[300px]'>
+                            <p>{experienceReason}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+
+                      <TableCell>
+                        <Tooltip >
+                          <TooltipTrigger asChild>
+                            <span>{technicalScore}%</span>
+                          </TooltipTrigger>
+                          <TooltipContent className='max-w-[300px]'>
+                            <p>{technicalReason}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+
+                      <TableCell>
+                        <Tooltip >
                           <TooltipTrigger asChild>
                             <span>{totalScore}%</span>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className='max-w-[300px]'>
                             <p>{totalReason}</p>
                           </TooltipContent>
                         </Tooltip>
@@ -181,6 +253,20 @@ export default function ViewCandidates() {
                           <span>Not fit</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {getInterviewStatus(interviewData)}
+                      </TableCell>
+
+                      <TableCell>
+                        {getInterviewStatus(interviewData) === 'Done' ? (
+                          <Link className='text-blue-400 underline' target='_blank' href={`/hr/view-candidates/${jobId}/interview-report/${candidate.candidate_id}`}>
+                            View Report
+                          </Link>
+                        ) : (
+                          <span>NA</span>
+                        )}
+                      </TableCell>
+
                     </TableRow>
                   );
                 })}
