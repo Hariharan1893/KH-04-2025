@@ -4,6 +4,7 @@ import React, { useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
+import { useCaptureStore } from "@/lib/state-management/store";
 
 export default function CaptureCandidateFace() {
     const { jobid }: any = useParams();
@@ -11,13 +12,23 @@ export default function CaptureCandidateFace() {
     const jobId = data.split("--")[0];
     const candidateId = data.split("--")[1];
 
-    const webcamRef = useRef<Webcam>(null);
-    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const { capturedImage, setCapturedImage } = useCaptureStore();
 
-    const capture = useCallback(() => {
-        const imageSrc = webcamRef.current?.getScreenshot();
-        setCapturedImage(imageSrc || null);
-    }, [webcamRef]);
+    const capture = async () => {
+        try {
+            const response = await fetch("http://127.0.0.1:5000/capture_frame");
+            if (!response.ok) throw new Error("Failed to capture image");
+
+            const imageBlob = await response.blob();
+            const reader = new FileReader();
+            reader.readAsDataURL(imageBlob);
+            reader.onloadend = () => {
+                setCapturedImage(reader.result as string);
+            };
+        } catch (error) {
+            console.error("Capture error:", error);
+        }
+    };
 
     const retake = () => {
         setCapturedImage(null);
@@ -31,7 +42,7 @@ export default function CaptureCandidateFace() {
             <div className="max-w-md w-full">
                 {!capturedImage ? (
                     <div className="flex flex-col items-center">
-                        <Webcam
+                        {/* <Webcam
                             audio={false}
                             ref={webcamRef}
                             screenshotFormat="image/jpeg"
@@ -42,6 +53,9 @@ export default function CaptureCandidateFace() {
                             }}
                             className="rounded-md border border-gray-300"
                         />
+                         */}
+                        <img src="http://127.0.0.1:5000/video_feed" className="w-full h-full object-cover" alt="Webcam Feed" />
+
                         <div className="mt-4 text-center">
                             <p className="text-lg font-medium mb-2">
                                 Please ensure your face is clearly visible in the frame.

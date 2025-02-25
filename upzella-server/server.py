@@ -1,10 +1,15 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
 import requests
 import json
 import ast
-from gtts import gTTS
 import io
+import cv2
+
+from gtts import gTTS
+import speech_recognition as sr
+import pyttsx3
+from pydub import AudioSegment
 
 from utils.utils import parse_pdf, format_response
 
@@ -99,10 +104,9 @@ def score_interview_response():
     if 'messages' not in data or not isinstance(data['messages'], list):
         return jsonify({"error": "Invalid request format"}), 400
 
-    messages = data['messages']  # Extract messages list
+    messages = data['messages']
     results = []
-    total_score = 0  # Track overall score
-    # Max score assuming 10 per response
+    total_score = 0
     max_possible_score = 10 * \
         len([m for m in messages if m['sender'] == 'User'])
 
@@ -115,7 +119,7 @@ def score_interview_response():
 
             evaluation = json.loads(format_response(
                 score_response(question, answer, category)))
-            total_score += evaluation["score"]  # Accumulate total score
+            total_score += evaluation["score"]
             results.append({
                 "question": question,
                 "answer": answer,
@@ -124,7 +128,6 @@ def score_interview_response():
                 "reasoning": evaluation["reasoning"]
             })
 
-    # Determine the overall reasoning
     if total_score == 0:
         overall_reasoning = "No valid responses were provided. Consider providing detailed answers for a better score."
     elif total_score / max_possible_score < 0.3:
@@ -137,6 +140,62 @@ def score_interview_response():
         overall_reasoning = "Excellent responses! Demonstrated strong understanding and clear communication."
 
     return jsonify({"results": results, "total_score": total_score, "overall_reasoning": overall_reasoning, 'max_possible_score': max_possible_score})
+
+
+camera = cv2.VideoCapture(0)
+
+
+def generate_frames():
+    while True:
+        success, frame = camera.read()
+        if not success:
+            break
+        else:
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/capture_frame', methods=['GET'])
+def capture_frame():
+    global stored_face_encoding
+    _, frame = camera.read()
+
+    _, buffer = cv2.imencode('.jpg', frame)
+    return Response(buffer.tobytes(), content_type="image/jpeg")
+
+
+recognizer = sr.Recognizer()
+engine = pyttsx3.init()
+
+
+@app.route("/speech-to-text", methods=["POST"])
+def speech_to_text():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    audio_bytes = file.read()
+    audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="webm")
+    wav_io = io.BytesIO()
+    audio.export(wav_io, format="wav")
+    wav_io.seek(0)
+
+    with sr.AudioFile(wav_io) as source:
+        audio_data = recognizer.record(source)
+        try:
+            text = recognizer.recognize_google(audio_data)
+            return jsonify({"transcription": text})
+        except sr.UnknownValueError:
+            return jsonify({"error": "Could not understand audio"}), 400
+        except sr.RequestError:
+            return jsonify({"error": "Speech Recognition service unavailable"}), 500
 
 
 if __name__ == '__main__':

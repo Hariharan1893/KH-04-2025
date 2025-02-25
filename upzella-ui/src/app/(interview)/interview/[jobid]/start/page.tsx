@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Webcam from 'react-webcam';
 import axios from 'axios';
+import { useCaptureStore } from '@/lib/state-management/store';
 
 interface QuestionsResponse {
     zella_questions: string[];
@@ -23,13 +24,58 @@ function ChatInterface() {
     const [loading, setLoading] = useState(true);
     const [questions, setQuestions] = useState<string[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [audioUrl, setAudioUrl] = useState("");
     const [interviewEnded, setInterviewEnded] = useState(false);
 
     const [jobData, setJobData] = useState<any>(null);
     const [candidateData, setCandidateData] = useState<any>(null);
 
     const [submittingDataLoader, setSubmittingDataLoader] = useState(false);
+
+    const [isRecording, setIsRecording] = useState(false);
+
+    const [audioUrl, setAudioUrl] = useState<any>('');
+
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
+    const startRecording = async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+            const formData = new FormData();
+            formData.append("file", audioBlob, "audio.webm");
+
+            try {
+                const response = await axios.post("http://127.0.0.1:5000/speech-to-text", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                console.log(response.data.transcription)
+                setInputText(response.data.transcription)
+                handleSendMessage();
+            } catch (error) {
+                console.error("Error transcribing:", error);
+            }
+
+            audioChunksRef.current = [];
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
 
     const generateAudio = async (text: string) => {
         try {
@@ -224,6 +270,9 @@ function ChatInterface() {
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                         />
+                        <button onClick={isRecording ? stopRecording : startRecording} className="px-4 py-2 bg-blue-500 text-white rounded">
+                            {isRecording ? "Stop Recording" : "Start Recording"}
+                        </button>
                         <button onClick={handleSendMessage} className="bg-blue-500 text-white rounded p-2">
                             Send
                         </button>
@@ -234,7 +283,8 @@ function ChatInterface() {
                 </div>
                 <div>
                     <div className="w-[300px] h-[200px] border border-gray-400 rounded-lg shadow-lg overflow-hidden bg-black">
-                        <Webcam className="w-full h-full object-cover" />
+                        {/* <Webcam className="w-full h-full object-cover" /> */}
+                        <img src="http://127.0.0.1:5000/video_feed" className="w-full h-full object-cover" alt="Webcam Feed" />
                     </div>
                     <button className='my-5 bg-red-400 px-3 py-1 rounded-md text-white' onClick={endInterview}>
                         End
