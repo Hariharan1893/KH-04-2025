@@ -43,7 +43,7 @@ next-env.d.ts
 
 */.next
 */.env.local
-/upzella-server/.env
+*/upzella-server/.env*
 
 */__pycache__
 */__pycache__/*
