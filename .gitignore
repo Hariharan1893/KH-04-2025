@@ -43,7 +43,6 @@ next-env.d.ts
 
 */.next
 */.env.local
-*/upzella-server/.env*
 
 */__pycache__
 */__pycache__/*
@@ -52,3 +51,16 @@ next-env.d.ts
 */utils/__pycache__/*
 */agents/__pycache__/*
 */agents/models/__pycache__/*
+
+upzella-server/.env
+
+# Ignore other common sensitive or unnecessary files
+node_modules/
+.DS_Store
+*.log
+dist/
+build/
+.env.local
+.env.development
+.env.production
+.env.test
