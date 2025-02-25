@@ -75,17 +75,17 @@ This platform streamlines the recruitment process by combining traditional appli
 
 ## Getting Started
 
--- Server-side:
-1. Clone the repository: `[git clone https://github.com/your-repo/upzella.git](https://github.com/Hariharan1893/KH-04-2025/)`
+- Server-side:
+1. Clone the repository: `https://github.com/Hariharan1893/KH-04-2025/`
 2. Navigate to the project directory: `cd upzella-server`
 3. Install dependencies: `pip install requirements.txt`
 4. Run the server: `python server.py`
 
--- Client-side:
+- Client-side:
 1. Navigate to the project directory: `cd upzella-client`
 2. Install dependencies: `npm install`
 3. Run the client: `npm run dev`
 
--- Environment Setup:
+- Environment Setup:
 1. Rename `.env.example` to `.env.local` and update environment variables.
 
