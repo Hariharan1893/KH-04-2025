@@ -42,19 +42,14 @@ export default function CaptureCandidateFace() {
             <div className="max-w-md w-full">
                 {!capturedImage ? (
                     <div className="flex flex-col items-center">
-                        {/* <Webcam
-                            audio={false}
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            videoConstraints={{
-                                width: 640,
-                                height: 480,
-                                facingMode: "user",
-                            }}
-                            className="rounded-md border border-gray-300"
-                        />
-                         */}
-                        <img src="http://127.0.0.1:5000/video_feed" className="w-full h-full object-cover" alt="Webcam Feed" />
+                        {!capturedImage && (
+                            <img
+                                src="http://127.0.0.1:5000/video_feed"
+                                className="w-full h-full object-cover"
+                                alt="Webcam Feed"
+                                key={Date.now()} // Forces re-render
+                            />
+                        )}
 
                         <div className="mt-4 text-center">
                             <p className="text-lg font-medium mb-2">
@@ -87,6 +82,7 @@ export default function CaptureCandidateFace() {
                     </div>
                 )}
             </div>
+
         </main>
     );
 }

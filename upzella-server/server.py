@@ -21,6 +21,11 @@ from agents.InterviewScoringAgents import score_response, get_category
 app = Flask(__name__)
 CORS(app)
 
+camera = cv2.VideoCapture(0)
+
+recognizer = sr.Recognizer()
+engine = pyttsx3.init()
+
 
 @app.route('/parseResume', methods=['POST', 'GET'])
 def parse_resume():
@@ -142,9 +147,6 @@ def score_interview_response():
     return jsonify({"results": results, "total_score": total_score, "overall_reasoning": overall_reasoning, 'max_possible_score': max_possible_score})
 
 
-camera = cv2.VideoCapture(0)
-
-
 def generate_frames():
     while True:
         success, frame = camera.read()
@@ -168,11 +170,8 @@ def capture_frame():
     _, frame = camera.read()
 
     _, buffer = cv2.imencode('.jpg', frame)
+    camera.release()
     return Response(buffer.tobytes(), content_type="image/jpeg")
-
-
-recognizer = sr.Recognizer()
-engine = pyttsx3.init()
 
 
 @app.route("/speech-to-text", methods=["POST"])

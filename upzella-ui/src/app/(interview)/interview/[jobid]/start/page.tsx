@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import { useCaptureStore } from '@/lib/state-management/store';
+import * as faceapi from "face-api.js";
+import Link from 'next/link';
 
 interface QuestionsResponse {
     zella_questions: string[];
@@ -37,6 +38,84 @@ function ChatInterface() {
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+
+    const webcamRef = useRef<Webcam | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+    useEffect(() => {
+        const loadModels = async () => {
+            const MODEL_URL = "/models";
+
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        };
+
+        loadModels();
+    }, []);
+
+    useEffect(() => {
+        const checkWebcam = () => {
+            if (webcamRef.current && webcamRef.current.video?.readyState === 4) {
+            } else {
+                setTimeout(checkWebcam, 500);
+            }
+        };
+
+        checkWebcam();
+    }, []);
+
+
+    useEffect(() => {
+        const detectFaces = async () => {
+            console.log("detectFaces function is running! 🧐");
+
+            if (!webcamRef.current || !canvasRef.current) {
+                console.log("Webcam or canvas not found.");
+                return;
+            }
+
+            const video = webcamRef.current.video;
+            if (!video || video.readyState !== 4) {
+                console.log("Video not ready.");
+                return;
+            }
+
+            console.log("Starting face detection... 🚀");
+
+            const displaySize = { width: video.videoWidth, height: video.videoHeight };
+            faceapi.matchDimensions(canvasRef.current, displaySize);
+
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceExpressions();
+
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+
+                const context = canvasRef.current!.getContext("2d");
+                if (context) {
+                    context.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+                    faceapi.draw.drawDetections(canvasRef.current!, resizedDetections);
+                    faceapi.draw.drawFaceLandmarks(canvasRef.current!, resizedDetections);
+                    // faceapi.draw.drawFaceExpressions(canvasRef.current!, resizedDetections);
+                }
+            }, 100);
+        };
+
+        const checkWebcamReady = () => {
+            if (webcamRef.current && webcamRef.current.video) {
+                webcamRef.current.video.addEventListener('loadeddata', detectFaces);
+            } else {
+                console.log("Waiting for webcam to initialize...");
+                setTimeout(checkWebcamReady, 500); 
+            }
+        };
+
+        checkWebcamReady();
+    }, []);
+
 
     const startRecording = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -250,7 +329,9 @@ function ChatInterface() {
 
             <p className='text-center w-full'>{jobData.job_name} - (Interview)</p>
 
+            <Link href={`http://localhost:3000/interview/${jobId}--${candidateId}/start/vscode-env`} target='_blank' className='ml-5 text-blue-400 underline'>Open Code Editor</Link>
             <div className='w-full flex'>
+
                 <div className="relative flex flex-col h-[calc(100vh-10vh)] p-4 w-full">
                     <div className="flex-1 border border-gray-300 rounded p-4 overflow-y-auto mb-4">
                         {messages.map((msg, idx) => (
@@ -282,10 +363,11 @@ function ChatInterface() {
                     </div>
                 </div>
                 <div>
-                    <div className="w-[300px] h-[200px] border border-gray-400 rounded-lg shadow-lg overflow-hidden bg-black">
-                        {/* <Webcam className="w-full h-full object-cover" /> */}
-                        <img src="http://127.0.0.1:5000/video_feed" className="w-full h-full object-cover" alt="Webcam Feed" />
+                    <div className="w-[300px] h-[250px] relative">
+                        <Webcam ref={webcamRef} className="absolute w-full h-full object-cover border border-gray-400 rounded-lg shadow-lg z-10" />
+                        <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-10" />
                     </div>
+
                     <button className='my-5 bg-red-400 px-3 py-1 rounded-md text-white' onClick={endInterview}>
                         End
                     </button>
